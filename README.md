@@ -177,7 +177,12 @@ sudo systemctl statusssh
 bash ~/deploy/bin/watch.sh
 ```
 
+<br/>
 백그라운드 실행:
+
+![deploy](images/watch.png)
+
+![deploy](images/app.png)
 
 ```
 nohup ~/deploy/bin/watch.sh > ~/deploy/logs/watch_stdout.log2>&1 &
@@ -186,6 +191,7 @@ nohup ~/deploy/bin/watch.sh > ~/deploy/logs/watch_stdout.log2>&1 &
 ---
 
 ### 8.3 📡 배포 실행 (Windows)
+![deploy](images/deploy.png)
 
 ```
 sh deploy.sh
