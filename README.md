@@ -115,74 +115,22 @@ mkdir-p ~/deploy/incoming ~/deploy/current ~/deploy/logs ~/deploy/bin
 
 ## 7. Scripts
 
-### 7.1 📤 deploy.sh (Windows)
+### 7.1 📤 [deploy.sh](script/deploy.sh) (Windows)
 
 - JAR 존재 여부 확인
 - scp로 Ubuntu VM에 업로드
 - 파일명을 `app.jar`로 고정하여 watcher와 연동
 
-```
-REMOTE_USER=ubuntu
-REMOTE_HOST=127.0.0.1
-REMOTE_PORT=2020
-REMOTE_PATH=/home/ubuntu/deploy/incoming/app.jar
-
-LOCAL_JAR="/c/ce6/04.SpringBoot/step06_buildGradleTest/build/libs/step06_buildGradleTest-0.0.1-SNAPSHOT.jar"
-
-scp-P"$REMOTE_PORT""$LOCAL_JAR""${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}"
-```
 
 ---
 
-### 7.2 👁️ watch.sh (Ubuntu)
+### 7.2 👁️ [watch.sh](script/watch.sh) (Ubuntu)
 
 - `inotifywait`로 파일 변경 감지
 - 변경 시 `current/app.jar`로 복사
 - `run.sh` 실행
 
-```
-#!/bin/bash
 
-WATCH_DIR="$HOME/deploy/incoming"
-TARGET_FILE="app.jar"
-CURRENT_JAR="$HOME/deploy/current/app.jar"
-RUN_SCRIPT="$HOME/deploy/bin/run.sh"
-WATCH_LOG="$HOME/deploy/logs/watch.log"
-
-COOLDOWN=10
-LAST_RUN=0
-
-echo "[$(date)] watch.sh 시작 - $WATCH_DIR 감시 중" | tee -a "$WATCH_LOG"
-
-inotifywait -m -e close_write,create,moved_to "$WATCH_DIR" |
-while read -r directory events filename; do
-    if [ "$filename" != "$TARGET_FILE" ]; then
-        continue
-    fi
-
-    CURRENT_TIME=$(date +%s)
-
-    if (( CURRENT_TIME - LAST_RUN <= COOLDOWN )); then
-        echo "[$(date)] 쿨다운 기간 중 - 재실행 생략" | tee -a "$WATCH_LOG"
-        continue
-    fi
-
-    LAST_RUN=$CURRENT_TIME
-
-    echo "[$(date)] $filename 변경 감지 ($events)" | tee -a "$WATCH_LOG"
-
-    # 파일이 완전히 들어왔는지 잠깐 대기
-    sleep 1
-
-    # 실제 실행용 위치로 복사
-    cp "$WATCH_DIR/$TARGET_FILE" "$CURRENT_JAR"
-
-    echo "[$(date)] current/app.jar 갱신 완료" | tee -a "$WATCH_LOG"
-
-    # 앱 재실행
-    bash "$RUN_SCRIPT" | tee -a "$WATCH_LOG"
-done
-```
 
 핵심 포인트:
 
@@ -192,7 +140,7 @@ done
 
 ---
 
-### 7.3 ⚙️ run.sh (Ubuntu)
+### 7.3 ⚙️ [run.sh](script/run.sh) (Ubuntu)
 
 - 기존 프로세스 종료
 - 포트 점유 프로세스 정리
@@ -200,85 +148,6 @@ done
 - PID 및 로그 관리
 
 
-```
-#!/bin/bash
-
-APP_DIR="$HOME/deploy"
-JAR_PATH="$APP_DIR/current/app.jar"
-PID_FILE="$APP_DIR/current/app.pid"
-LOG_FILE="$APP_DIR/logs/app.log"
-APP_PORT=8080
-
-echo "[$(date)] run.sh 시작"
-
-# 기존 PID 기준 종료
-if [ -f "$PID_FILE" ]; then
-    OLD_PID=$(cat "$PID_FILE")
-    if ps -p "$OLD_PID" > /dev/null 2>&1; then
-        echo "[$(date)] 기존 프로세스 종료 시도: $OLD_PID"
-        kill "$OLD_PID"
-
-        # 최대 10초 대기
-        for i in {1..10}; do
-            if ! ps -p "$OLD_PID" > /dev/null 2>&1; then
-                echo "[$(date)] 기존 PID 종료 확인: $OLD_PID"
-                break
-            fi
-            sleep 1
-        done
-
-        # 아직 살아있으면 강제 종료
-        if ps -p "$OLD_PID" > /dev/null 2>&1; then
-            echo "[$(date)] 기존 PID 강제 종료: $OLD_PID"
-            kill -9 "$OLD_PID"
-            sleep 1
-        fi
-    fi
-    rm -f "$PID_FILE"
-fi
-
-# 포트 점유 프로세스 종료
-PORT_PID=$(lsof -ti tcp:$APP_PORT)
-if [ -n "$PORT_PID" ]; then
-    echo "[$(date)] 포트 $APP_PORT 점유 프로세스 종료: $PORT_PID"
-    kill $PORT_PID
-
-    for i in {1..10}; do
-        if ! lsof -ti tcp:$APP_PORT >/dev/null 2>&1; then
-            echo "[$(date)] 포트 $APP_PORT 해제 확인"
-            break
-        fi
-        sleep 1
-    done
-
-    if lsof -ti tcp:$APP_PORT >/dev/null 2>&1; then
-        PORT_PID=$(lsof -ti tcp:$APP_PORT)
-        echo "[$(date)] 포트 $APP_PORT 강제 종료: $PORT_PID"
-        kill -9 $PORT_PID
-        sleep 1
-    fi
-fi
-
-# 최종 확인
-if lsof -ti tcp:$APP_PORT >/dev/null 2>&1; then
-    echo "[$(date)] 포트 $APP_PORT 가 아직 사용 중이라 실행 중단"
-    exit 1
-fi
-
-if [ ! -f "$JAR_PATH" ]; then
-    echo "[$(date)] jar 파일 없음: $JAR_PATH"
-    exit 1
-fi
-
-echo "[$(date)] 새 app.jar 실행"
-nohup java -jar "$JAR_PATH" --server.port=8080 > "$LOG_FILE" 2>&1 &
-
-NEW_PID=$!
-echo $NEW_PID > "$PID_FILE"
-
-echo "[$(date)] 실행 완료, PID=$NEW_PID"
-
-```
 
 ---
 
