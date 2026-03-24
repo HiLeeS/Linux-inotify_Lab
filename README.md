@@ -128,7 +128,7 @@ mkdir-p ~/deploy/incoming ~/deploy/current ~/deploy/logs ~/deploy/bin
 
 - `inotifywait`로 파일 변경 감지
 - 변경 시 `current/app.jar`로 복사
-- `run.sh` 실행
+- `run.sh` 실행 
 
 
 
