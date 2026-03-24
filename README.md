@@ -1,4 +1,12 @@
 # 📦 파일 변경 감지(inotify)를 활용한 Spring Boot 자동 배포 구현
+<br/>
+
+## 🧑‍💻 팀원 소개
+| ![](https://avatars.githubusercontent.com/u/72748734?v=3) | ![](https://avatars.githubusercontent.com/u/204296918?v=3) |
+|:---:|:---:|
+| **이승준**<br>[@HiLeeS](https://github.com/HiLeeS) | **이준호**<br>[@Junhoss](https://github.com/Junhoss) |
+<br/>
+
 ## 1. Overview
 
 Windows host 환경에서 Spring Boot 애플리케이션을 JAR로 빌드한 뒤, Git Bash의 배포 스크립트를 통해 Ubuntu VM으로 파일을 전송하고, Ubuntu에서는 `inotify`를 사용해 파일 변경을 감지하여 애플리케이션을 자동 재실행하는 흐름을 구성했다.
