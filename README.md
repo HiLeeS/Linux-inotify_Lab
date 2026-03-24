@@ -195,55 +195,28 @@ sh deploy.sh
 
 ## 9. Troubleshooting
 
-### ❗ Issue 1. SCP 성공했지만 실행되지 않음
+### ❗ 재배포 시 포트 충돌로 실행 실패
 
-### 원인
 
-- `watch.sh` 실행 당시 `inotifywait` 미설치
-- watcher 프로세스 즉시 종료
-
-### 확인
-
+- Ubuntu에서 새 JAR 파일은 정상적으로 전송되었지만 애플리케이션이 다시 실행되지 않음
+- `app.log` 확인 결과 다음 에러 발생
+```text
+Web server failed to start. Port 8080 was already in use.
 ```
-ps-ef |grep watch.sh
-cat ~/deploy/logs/watch_stdout.log
-```
+### 문제 원인
+- 기존 Java 프로세스가 완전히 종료되기 전에 새 JAR를 바로 실행하면서 8080 포트 충돌이 발생함
+- `kill` 명령 직후에도 운영체제가 즉시 포트를 해제하지 않아, 짧은 시간 동안 기존 프로세스가 포트를 계속 점유하고 있었음
+- 기존 `run.sh`는 종료 후 짧은 `sleep`만 두고 바로 실행해, 종료 완료 여부와 포트 해제 여부를 확인하지 못했음
 
 ### 해결
+- 기존 PID를 기준으로 먼저 프로세스를 종료하고, 실제 종료 여부를 반복 확인하도록 수정함
+- 종료되지 않은 경우 강제 종료하도록 보완함
+- `lsof`로 8080 포트 점유 여부를 확인한 뒤, 포트가 완전히 해제된 경우에만 새 JAR를 실행하도록 변경함
 
-```
-sudo apt-get install inotify-tools
-bash ~/deploy/bin/watch.sh
-```
-
----
-
-### ❗ Issue 2. 파일 감지 안됨
-
-### 원인
-
-- 파일명이 `app.jar`가 아님
-
-### 해결
-
-```
-scp ... /home/ubuntu/deploy/incoming/app.jar
-```
-
----
-
-### ❗ Issue 3. watcher 실행 중 아님
-
-```
-ps-ef |grep watch.sh
-```
-
-없으면 재실행:
-
-```
-bash ~/deploy/bin/watch.sh
-```
-
+### 배운 점
+- 자동 배포에서는 단순히 `kill` 후 바로 실행하는 방식만으로는 충분하지 않음
+- 프로세스 종료 완료와 포트 해제 완료를 확인하는 안정적인 재시작 로직이 필요함
+- 재배포 자동화에서는 실행 속도보다 안정적인 순서 보장이 더 중요하다는 점을 확인함
 ---
 
 ## 10. Result
